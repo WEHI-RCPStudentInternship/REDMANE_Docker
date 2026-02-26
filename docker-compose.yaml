@@ -29,7 +29,7 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       AUTH0_DOMAIN: dev-6mdq3tdvjb04tojd.us.auth0.com
-      AUTH0_AUDIENCE: raZrj2RJz28jARpFHF3YzSVBB7sqGEvV
+      AUTH0_AUDIENCE: redmane
       AUTH0_ISSUER: https://dev-6mdq3tdvjb04tojd.us.auth0.com/
     depends_on:
       - db
