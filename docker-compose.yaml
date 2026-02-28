@@ -28,9 +28,9 @@ services:
       DB_PASSWORD: password
       DB_HOST: db
       DB_PORT: 5432
-      AUTH0_DOMAIN: dev-6mdq3tdvjb04tojd.us.auth0.com
-      AUTH0_AUDIENCE: redmane
-      AUTH0_ISSUER: https://dev-6mdq3tdvjb04tojd.us.auth0.com/
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
+      AUTH0_ISSUER: https://${AUTH0_DOMAIN}/
     depends_on:
       - db
     networks:
@@ -50,15 +50,16 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      DOMAINS: 'localhost'
+      DOMAINS: '${DOMAIN}'
       # changed this 
       # Do not use production until ready because Let's Encrypt has rate limits
-      STAGE: 'local' # local, 'staging', 'production'
+      STAGE: '${STAGE}' # local, 'staging', 'production'
     volumes:
       - https-portal-data:/var/lib/https-portal
       #changed this 
+      - ./${DOMAIN}.conf.erb:/var/lib/nginx-conf/${DOMAIN}.ssl.conf.erb:ro
       # - ./data-registry.wehi-rcp.cloud.edu.au.conf.erb:/var/lib/nginx-conf/data-registry.wehi-rcp.cloud.edu.au.ssl.conf.erb:ro
-      - ./data-registry.wehi-rcp.cloud.edu.au.conf.erb:/var/lib/nginx-conf/localhost.ssl.conf.erb:ro
+      # - ./data-registry.wehi-rcp.cloud.edu.au.conf.erb:/var/lib/nginx-conf/localhost.ssl.conf.erb:ro
       - frontend-static:/var/www/vhosts/data-registry:ro
     depends_on:
       - backend
