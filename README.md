@@ -179,3 +179,220 @@ docker volume rm redmane_postgres_data
 docker compose up -d
 ```
 This forces PostgreSQL to re-run the init scripts on startup since the data volume is empty.
+
+
+# REDMANE Auth0 Setup Guide
+
+This app demonstrates how to use the Auth0 SDK for authentication.
+
+---
+
+## Getting Started
+
+### 1. Clone the Repositories
+
+```bash
+# Clone the Docker repo
+git clone <REDMANE_Docker_repo_url>
+cd REDMANE_Docker
+git checkout Auth0
+
+# Clone the React frontend
+git clone <REDMANE_react.js_repo_url>
+cd REDMANE_react.js
+git checkout Auth0
+
+# Clone the FastAPI backend
+git clone <REDMANE_fastapi_repo_url>
+cd REDMANE_fastapi
+git checkout Auth0
+```
+
+> **Note:** The current repo is configured for an existing Auth0 application. If you want to use it as-is, skip to [Run the Application](#run-the-application). To set up your own Auth0 application, follow the steps below.
+
+---
+
+## How to Make an Auth0 App
+
+### 2. Create an Auth0 Account and Application
+
+1. Create an account at [manage.auth0.com](https://manage.auth0.com)
+2. Navigate to **Applications → Applications → Create Application**
+3. Set:
+   - **Name**: `REDMANE` (or any name)
+   - **Type**: Single Page Application
+4. Under **Settings**, configure:
+   - **Allowed Callback URLs**:
+     ```
+     http://localhost:5173, http://localhost:4173, https://your-production-domain.com
+     ```
+   - **Allowed Logout URLs**:
+     ```
+     http://localhost:5173/login, http://localhost:4173/login, https://your-production-domain.com/login
+     ```
+   - **Allowed Web Origins**:
+     ```
+     http://localhost:5173, http://localhost:4173, https://your-production-domain.com
+     ```
+5. Click **Save Changes** and note down your **Domain** and **Client ID**
+
+### 3. Create an Auth0 API
+
+1. Navigate to **Applications → APIs → Create API**
+2. Set:
+   - **Name**: `REDMANE API`
+   - **Identifier**: `redmane`
+   - **Signing Algorithm**: RS256
+3. Click **Create**
+4. Navigate to **Applications → Applications → your application → APIs tab**
+5. Toggle on **REDMANE API** to grant your application access
+
+---
+
+## Configure the React Frontend
+
+### 4. Create Environment Files
+
+Create `.env.development` in `REDMANE_react.js/`:
+
+```bash
+VITE_API_BASE_URL=http://localhost:8888
+VITE_AUTH0_DOMAIN=        # paste your domain here
+VITE_AUTH0_CLIENT_ID=     # paste your client ID here
+VITE_AUTH0_AUDIENCE=redmane
+```
+
+Create `.env.production` in `REDMANE_react.js/`:
+
+```bash
+VITE_API_BASE_URL=https://your-production-domain.com/fastapi
+VITE_AUTH0_DOMAIN=        # paste your domain here
+VITE_AUTH0_CLIENT_ID=     # paste your client ID here
+VITE_AUTH0_AUDIENCE=redmane
+```
+
+---
+
+## Configure the FastAPI Backend
+
+### 5. Update `auth.py`
+
+**For development** (with fallback defaults):
+
+```python
+AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN", "insert-domain-here").strip()
+AUTH0_AUDIENCE = os.getenv("AUTH0_AUDIENCE", "redmane").strip()
+```
+
+**For production** (fails loudly if env vars are missing):
+
+```python
+AUTH0_DOMAIN = os.getenv("AUTH0_DOMAIN", "").strip()
+AUTH0_AUDIENCE = os.getenv("AUTH0_AUDIENCE", "").strip()
+AUTH0_ISSUER = f"https://{AUTH0_DOMAIN}/"
+
+if not AUTH0_DOMAIN:
+    raise RuntimeError("AUTH0_DOMAIN environment variable is not set")
+if not AUTH0_AUDIENCE:
+    raise RuntimeError("AUTH0_AUDIENCE environment variable is not set")
+```
+
+---
+
+## Configure Docker
+
+### 6. Update `docker-compose.yaml`
+
+Under the backend service, set the Auth0 environment variables:
+
+```yaml
+backend:
+  environment:
+    - AUTH0_DOMAIN=${AUTH0_DOMAIN}
+    - AUTH0_AUDIENCE=${AUTH0_AUDIENCE}
+```
+
+### 7. Create a `.env` File in `REDMANE_Docker/`
+
+> Unlike React, Docker Compose only reads a single `.env` file — not `.env.development` or `.env.production`.
+
+**For local development:**
+
+```bash
+AUTH0_DOMAIN=        # insert your Auth0 domain
+AUTH0_AUDIENCE=redmane
+DOMAIN=localhost
+STAGE=local
+```
+
+**For production (on the server):**
+
+```bash
+AUTH0_DOMAIN=        # insert your Auth0 domain
+AUTH0_AUDIENCE=redmane
+DOMAIN=data-registry.wehi-rcp.cloud.edu.au
+STAGE=production
+```
+
+### 8. Add `.env` to `.gitignore`
+
+```bash
+echo ".env" >> .gitignore
+```
+
+---
+
+## Run the Application
+
+### 9. Start the Backend and Database
+
+```bash
+cd REDMANE_Docker
+docker compose up -d
+```
+
+### 10. Load the Database (First Time Only)
+
+```bash
+docker exec -it redmane-db psql -U postgres -d readmedatabase -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+docker exec -i redmane-db psql -U postgres -d readmedatabase < REDMANE_fastapi/data/REDMANE_fastapi_public_data/readmedatabase.sql
+```
+
+### 11. Start the Frontend
+
+**Development:**
+
+```bash
+cd REDMANE_react.js
+npm install
+npm run dev
+```
+
+**Production build:**
+
+```bash
+cd REDMANE_react.js
+npm run build
+npm run preview  # to test the production build locally
+```
+
+---
+
+## Stopping the Application
+
+```bash
+cd REDMANE_Docker
+docker compose down
+```
+
+---
+
+## Debugging
+
+View backend logs:
+
+```bash
+docker logs redmane_docker-backend-1
+```
+
+---
