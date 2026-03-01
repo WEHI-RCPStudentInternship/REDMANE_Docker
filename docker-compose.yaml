@@ -15,6 +15,18 @@ services:
     networks:
       - redmane-network
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:19.0
+    container_name: redmane-keycloak
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    networks:
+      - redmane-network
+
   backend:
     build:
       context: ./
@@ -30,7 +42,7 @@ services:
       DB_PORT: 5432
       AUTH0_DOMAIN: ${AUTH0_DOMAIN}
       AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
-      AUTH0_ISSUER: https://${AUTH0_DOMAIN}/
+      AUTH0_ISSUER: ${AUTH0_ISSUER}
     depends_on:
       - db
     networks:
@@ -71,6 +83,7 @@ volumes:
   postgres_data:
   https-portal-data:
   frontend-static:
+  keycloak_data:
 
 
 networks:
