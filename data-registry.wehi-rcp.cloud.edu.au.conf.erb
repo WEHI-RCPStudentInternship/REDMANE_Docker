@@ -1,32 +1,22 @@
 server {
   listen 443 ssl;
   http2 on; # Replaces old 'listen 443 ssl http2' which throws deprecation warning
-  # change this 
-  server_name localhost;
+  server_name data-registry.wehi-rcp.cloud.edu.au;
 
-  # Change domain name and stage name if testing outside the Data Registry VM
-  # and if https-portal on docker-compose is not on production STAGE
-  #ssl_certificate /var/lib/https-portal/data-registry.wehi-rcp.cloud.edu.au/production/chained.crt;
-  ssl_certificate /var/lib/https-portal/localhost/local/chained.crt;
-  ssl_certificate_key /var/lib/https-portal/localhost/local/domain.key;
+  ssl_certificate /var/lib/https-portal/data-registry.wehi-rcp.cloud.edu.au/production/chained.crt;
+  ssl_certificate_key /var/lib/https-portal/data-registry.wehi-rcp.cloud.edu.au/production/domain.key;
   
-  # Route /fastapi/ to backend container
   location /fastapi/ {
-    proxy_pass http://backend:8888/; # Do not remove trailing slash
+    proxy_pass http://backend:8888/;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
   }
-
   
-  # Route everything else to the React.js static files hosted on https-portal
   location / {
-    # Sets the base directory where files are served, matching docker-compose
     root /var/www/vhosts/data-registry;
-    # Sets the index entry point
     index index.html;
-    # Try exact match, directory, and fallback to index.html if all fails
     try_files $uri $uri/ /index.html;
   }
 }
