@@ -22,8 +22,36 @@ services:
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
     ports:
       - "8080:8080"
+    networks:
+      - redmane-network
+
+  keycloak-setup:
+    image: quay.io/keycloak/keycloak:19.0
+    container_name: redmane-keycloak-setup
+    depends_on:
+      - keycloak
+    restart: on-failure
+    entrypoint: [ "/bin/bash", "-c" ]
+    command:
+      - |
+        echo 'Waiting for Keycloak...'
+        sleep 20
+        /opt/keycloak/bin/kcadm.sh config credentials --server http://keycloak:8080 --realm master --user admin --password admin
+        /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE
+        /opt/keycloak/bin/kcadm.sh create realms -s realm=redmane -s enabled=true -s sslRequired=NONE || true
+        /opt/keycloak/bin/kcadm.sh update realms/redmane -s sslRequired=NONE
+        /opt/keycloak/bin/kcadm.sh create clients -r redmane -s clientId=redmane -s enabled=true -s publicClient=true -s 'redirectUris=["http://localhost:5173/*"]' -s 'webOrigins=["http://localhost:5173"]' -s 'attributes={"post.logout.redirect.uris":"http://localhost:5173/*"}' || true
+        CLIENT_ID=$(/opt/keycloak/bin/kcadm.sh get clients -r redmane --fields id,clientId | grep -B1 '"redmane"' | grep id | cut -d'"' -f4)
+        /opt/keycloak/bin/kcadm.sh update clients/$CLIENT_ID -r redmane -s 'attributes={"post.logout.redirect.uris":"http://localhost:5173/*"}'
+        /opt/keycloak/bin/kcadm.sh create users -r redmane -s username=student -s enabled=true -s emailVerified=true || true
+        /opt/keycloak/bin/kcadm.sh set-password -r redmane --username student --new-password password --temporary=false || true
+        /opt/keycloak/bin/kcadm.sh create clients -r redmane -s clientId=redmane -s enabled=true -s publicClient=true -s 'redirectUris=["http://localhost:5173/*"]' -s 'webOrigins=["http://localhost:5173"]' -s rootUrl="http://localhost:5173" -s baseUrl="http://localhost:5173" -s adminUrl="http://localhost:5173" -s 'attributes={"post.logout.redirect.uris":"http://localhost:5173/*"}' || true &&
+        echo 'Setup complete'
     networks:
       - redmane-network
 
