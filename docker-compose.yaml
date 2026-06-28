@@ -17,12 +17,20 @@ services:
 
   backend:
     build:
-      context: ./ 
+      context: ./
       dockerfile: ./redmane_fastapi.dockerfile
     ports:
       - "8888:8888"
     environment:
       DATABASE_URL: postgresql://postgres:password@db:5432/readmedatabase
+      DB_NAME: readmedatabase
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_HOST: db
+      DB_PORT: 5432
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
+      AUTH0_ISSUER: https://${AUTH0_DOMAIN}/
     depends_on:
       - db
     networks:
@@ -30,7 +38,7 @@ services:
 
   frontend-build:
     build:
-      context: ./ 
+      context: ./
       dockerfile: ./redmane_reactjs.dockerfile
     volumes:
       - frontend-static:/static
@@ -42,12 +50,16 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      DOMAINS: 'data-registry.wehi-rcp.cloud.edu.au'
+      DOMAINS: '${DOMAIN}'
+      # changed this 
       # Do not use production until ready because Let's Encrypt has rate limits
-      STAGE: 'production' # local, 'staging', 'production'
+      STAGE: '${STAGE}' # local, 'staging', 'production'
     volumes:
       - https-portal-data:/var/lib/https-portal
-      - ./data-registry.wehi-rcp.cloud.edu.au.conf.erb:/var/lib/nginx-conf/data-registry.wehi-rcp.cloud.edu.au.ssl.conf.erb:ro
+      #changed this 
+      - ./${DOMAIN}.conf.erb:/var/lib/nginx-conf/${DOMAIN}.ssl.conf.erb:ro
+      # - ./data-registry.wehi-rcp.cloud.edu.au.conf.erb:/var/lib/nginx-conf/data-registry.wehi-rcp.cloud.edu.au.ssl.conf.erb:ro
+      # - ./data-registry.wehi-rcp.cloud.edu.au.conf.erb:/var/lib/nginx-conf/localhost.ssl.conf.erb:ro
       - frontend-static:/var/www/vhosts/data-registry:ro
     depends_on:
       - backend
@@ -59,6 +71,7 @@ volumes:
   postgres_data:
   https-portal-data:
   frontend-static:
+
 
 networks:
   redmane-network:
